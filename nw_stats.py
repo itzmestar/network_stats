@@ -6,14 +6,19 @@ from collections import OrderedDict
 import argparse
 from decimal import Decimal
 
-class PacketStat():
+# ---------- Version Info ----------#
+__version__ = "v1.0.0"
+
+
+class PacketStat:
     flow_count = 5
     flow_time = 1
+
     def __init__(self, filename, outfile, count, time):
         self.packets = []
         self.cap = pyshark.FileCapture(filename, keep_packets=False)
         self.outfile = open(outfile, 'w')
-        
+
         def find_tcp_udp(*args):
             if hasattr(args[0], 'tcp'):
                 self.packets.append(args[0])
@@ -41,13 +46,11 @@ class PacketStat():
     def __del__(self):
         self.outfile.close()
 
-
     def process_packets_count(self):
         for start in range(0, self.packets_len, PacketStat.flow_count):
             pkt_group = self.packets[start:start+PacketStat.flow_count]
             #print(start)
             self.process_group(pkt_group)
-
 
     def process_packets_time(self):
         ts = 0.0
@@ -60,9 +63,7 @@ class PacketStat():
                 ts = pkt_ts
                 #print("Process Group")
             pkt_group.append(pkt)
-            
-            
-            
+
     def process_group(self, pkt_group):
         stat_dict = OrderedDict()
         for pkt in pkt_group:
@@ -75,23 +76,23 @@ class PacketStat():
 
             key = src_ip + '-' + dst_ip
 
-            if stat_dict.get(key) != None:
-                statRow = stat_dict[key]
-                statRow.update(pkt)
-                
+            if stat_dict.get(key) is not None:
+                stat_row = stat_dict[key]
+                stat_row.update(pkt)
             else:
-                statRow = StatRow(src_ip, dst_ip, pkt)
-                stat_dict[key] = statRow
+                stat_row = StatRow(src_ip, dst_ip, pkt)
+                stat_dict[key] = stat_row
 
-        self.write_file( stat_dict)
+        self.write_file(stat_dict)
 
     def write_file(self, stat_dict):
         for row in stat_dict.values():
             #print(row, file=self.outfile, flush=True)
             #print(row)
             print(row, file=self.outfile)
-        
-class StatRow():
+
+
+class StatRow:
     def __init__(self, src_ip, dst_ip, pkt):
         self.src_ip = src_ip
         self.dst_ip = dst_ip
@@ -110,9 +111,9 @@ class StatRow():
         if hasattr(pkt, 'eth'):
             self.src_mac = pkt.eth.src
             self.dst_mac = pkt.eth.dst
-        
-        self.time1 = float(pkt.sniff_timestamp)#pkt.sniff_time
-        self.time2 = float(pkt.sniff_timestamp)#pkt.sniff_time
+
+        self.time1 = float(pkt.sniff_timestamp)
+        self.time2 = float(pkt.sniff_timestamp)
         #self.time_diff = round(Decimal(self.time1) - Decimal(self.time2), 6)
         self.time_diff = 0.0
         self.total_bytes = int(pkt.captured_length)
@@ -134,7 +135,7 @@ class StatRow():
         self.flag_cwr = "0"
         self.flag_ns = "0"
         self.flag_res = "0"
-        
+
         self.average_cal()
         self.update_tcp_flags(pkt, False)
 
@@ -152,7 +153,7 @@ class StatRow():
         self.time_diff = round(Decimal(self.time1) - Decimal(self.time2), 6)
         self.average_cal()
         self.update_tcp_flags(pkt, True)
-        
+
     def update_tcp_flags(self, pkt, flag):
         if hasattr(pkt, 'udp'):
             return
@@ -180,7 +181,7 @@ class StatRow():
             '''
         if flag:
             self.flag_fin += '|' + pkt.tcp.flags_fin
-            self.flag_syn += '|' +  pkt.tcp.flags_syn
+            self.flag_syn += '|' + pkt.tcp.flags_syn
             self.flag_reset += '|' + pkt.tcp.flags_reset
             self.flag_psh += '|' + pkt.tcp.flags_push
             self.flag_ack += '|' + pkt.tcp.flags_ack
@@ -200,7 +201,6 @@ class StatRow():
             self.flag_cwr = pkt.tcp.flags_cwr
             self.flag_ns = pkt.tcp.flags_ns
             self.flag_res = pkt.tcp.flags_res
-     
 
     def average_cal(self):
         '''self.avg_pkts = self.total_pkts / PacketStat.flow_count
@@ -211,8 +211,7 @@ class StatRow():
         self.avg_tcppkts = self.tcp_count / self.total_pkts
         self.avg_udppkts = self.udp_count / self.total_pkts
         self.avg_bytes = self.total_bytes / self.total_pkts
-        
-        
+
     def __str__(self):
 
         return "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}".format(self.src_ip, self.dst_ip, self.src_port, self.dst_port,
@@ -221,13 +220,14 @@ class StatRow():
                                                    self.avg_bytes, self.avg_pkts, self.avg_tcppkts, self.avg_udppkts,
                                                    self.flag_fin, self.flag_syn, self.flag_reset, self.flag_psh,
                                                    self.flag_ack, self.flag_urg, self.flag_ecn, self.flag_cwr,
-                                                   self.flag_ns,  self.flag_res                                                  
+                                                   self.flag_ns,  self.flag_res
                                                    )
+
     def string(self):
         return self.__str__()
 
 
-class AllPacket():
+class AllPacket:
 
     def __init__(self, filename, outfile):
         self.packets = []
@@ -262,7 +262,7 @@ class AllPacket():
         self.process_packets()
 
     def __del__(self):
-        self.outfile.close()        
+        self.outfile.close()
 
     def process_packets(self):
         for pkt in self.packets:
@@ -335,19 +335,22 @@ class AllPacket():
 
             duration = round(Decimal(ts) - Decimal(self.pre_ts), 6)
             self.pre_ts = ts
-            
+
             byte = pkt.captured_length
 
             print_str = "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}".format(src_ip, dst_ip, src_port, dst_port,
                                                    src_mac, dst_mac, duration, byte, proto,
                                                    flag_fin, flag_syn, flag_reset, flag_psh,
                                                    flag_ack, flag_urg, flag_ecn, flag_cwr,
-                                                   flag_ns,  flag_res                                                  
+                                                   flag_ns,  flag_res
                                                    )
             print(print_str, file=self.outfile)
-            
-#main function
+
+
 if __name__ == "__main__":
+    """
+        Execution starts here.
+    """
     parser = argparse.ArgumentParser(description='Network Statistics Analyzer.')
     group = parser.add_mutually_exclusive_group(required=True)
     #parser.add_argument('--count', help='Flow Count', type=int, default=5)
@@ -358,7 +361,6 @@ if __name__ == "__main__":
     parser.add_argument('--out', help='Output file', type=str, default='output.csv')
     args = parser.parse_args()
 
-    #PacketStat('sample2.pcap')
     if args.all:
         AllPacket(args.pcap, args.out)
     else :
